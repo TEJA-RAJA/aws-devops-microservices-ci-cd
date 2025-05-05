@@ -1,0 +1,41 @@
+pipeline {
+  agent any
+  environment {
+    AWS_DEFAULT_REGION = 'us-east-1'
+    ECR_REPO = 'your_ecr_repo_url'
+  }
+  stages {
+    stage('Checkout') {
+      steps {
+        git 'https://github.com/your-username/aws-devops-microservices-ci-cd.git'
+      }
+    }
+    stage('SonarQube Analysis') {
+      steps {
+        script {
+          withSonarQubeEnv('MySonarQube') {
+            sh 'sonar-scanner'
+          }
+        }
+      }
+    }
+    stage('Docker Build & Push') {
+      steps {
+        sh '''
+        docker build -t $ECR_REPO/frontend ./frontend
+        docker tag $ECR_REPO/frontend:latest $ECR_REPO/frontend:latest
+        docker push $ECR_REPO/frontend:latest
+        '''
+      }
+    }
+    stage('Deploy to ECS') {
+      steps {
+        sh '''
+        cd terraform
+        terraform init
+        terraform apply -auto-approve
+        '''
+      }
+    }
+  }
+}
